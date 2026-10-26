@@ -69,14 +69,28 @@ def upgrade() -> None:
             name="ck_appointments_service_kind",
         ),
     )
-    op.create_index(
-        "uq_appointments_active_slot",
-        "appointments",
-        ["availability_id"],
-        unique=True,
-        sqlite_where=sa.text("status IN ('pending', 'confirmed')"),
-        postgresql_where=sa.text("status IN ('pending', 'confirmed')"),
-    )
+    if op.get_bind().dialect.name == "mysql":
+        op.add_column(
+            "appointments",
+            sa.Column(
+                "active_availability_id",
+                sa.Integer(),
+                sa.Computed(
+                    "CASE WHEN status IN ('pending', 'confirmed') THEN availability_id ELSE NULL END",
+                    persisted=True,
+                ),
+            ),
+        )
+        op.create_index("uq_appointments_active_slot", "appointments", ["active_availability_id"], unique=True)
+    else:
+        op.create_index(
+            "uq_appointments_active_slot",
+            "appointments",
+            ["availability_id"],
+            unique=True,
+            sqlite_where=sa.text("status IN ('pending', 'confirmed')"),
+            postgresql_where=sa.text("status IN ('pending', 'confirmed')"),
+        )
     op.create_index("ix_appointments_owner_created", "appointments", ["owner_id", "created_at"])
     op.create_index("ix_appointments_provider_created", "appointments", ["provider_id", "created_at"])
 
@@ -85,6 +99,8 @@ def downgrade() -> None:
     op.drop_index("ix_appointments_provider_created", table_name="appointments")
     op.drop_index("ix_appointments_owner_created", table_name="appointments")
     op.drop_index("uq_appointments_active_slot", table_name="appointments")
+    if op.get_bind().dialect.name == "mysql":
+        op.drop_column("appointments", "active_availability_id")
     op.drop_table("appointments")
     op.drop_table("provider_availability")
     op.drop_table("provider_profiles")

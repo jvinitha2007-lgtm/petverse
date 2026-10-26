@@ -25,7 +25,7 @@ PetVerse is a full-stack pet-care management application. Its current milestones
 - An in-app notification center lists persistent emergency and message alerts and lets each account mark its own alerts read. Messaging is HTTP-based with manual refresh; attachments and real-time delivery are not implemented.
 - Configurable AI care assistant provides general education through an OpenAI-compatible HTTPS endpoint. Only the submitted question and optional species are sent; stored pet profiles and health records are not included. Urgent symptom keywords trigger immediate veterinary escalation guidance without calling the AI provider.
 - The emergency page displays immediate veterinary escalation guidance before any optional request form. Volunteer assistance is explicitly not presented as veterinary care; dispatch, response times, and professional medical services are not guaranteed.
-- SQLite for zero-service local development; PostgreSQL supported through `DATABASE_URL`.
+- SQLite for zero-service local development; PostgreSQL and MySQL/MariaDB are supported through `DATABASE_URL`.
 - Alembic migrations, API tests, frontend build, and Docker Compose configuration.
 
 Credential document upload and external license checks are not implemented; administrators review applicant-entered summaries. Emergency dispatch is a local in-app volunteer coordination feature; it does not contact emergency veterinary services and does not provide encrypted location storage, emergency email/push delivery, or real-time messaging. Provider booking covers profiles, availability, appointment state, and appointment-linked messaging only—payment, automated reminders, and map-based clinic discovery are not included. RAG over a veterinary knowledge base, secure document storage, and external map/video integrations are not implemented yet. No external service is represented as connected. See [the roadmap](#roadmap).
@@ -60,6 +60,10 @@ npm run dev
 ```
 
 Open the Vite URL printed by npm (usually `http://localhost:5173`). The API runs at `http://localhost:8000`; interactive OpenAPI docs are at `/docs`. The frontend uses that API URL by default.
+
+### Use XAMPP MariaDB locally
+
+Start MySQL in the XAMPP Control Panel and create a `petverse` database using `utf8mb4`. In `backend/.env`, set `DATABASE_URL` to a MySQL/MariaDB SQLAlchemy URL, for example `mysql+pymysql://petverse_app:YOUR_LOCAL_PASSWORD@127.0.0.1:3306/petverse?charset=utf8mb4`, then apply migrations with `alembic upgrade head`. Run the API as usual and open `http://localhost/phpmyadmin/` to inspect the `petverse` database and its tables. Use a dedicated local database user with a password; do not expose XAMPP or use its default root account for production.
 
 Set `JWT_SECRET` to a unique random value in `backend/.env` before using any non-disposable data. For example, generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Never reuse the example development key in production.
 
@@ -97,7 +101,7 @@ To start PostgreSQL with Compose, run `docker compose up -d db`, set the URL abo
 
 Deployment files are prepared, but no Azure resources have been created and nothing has been deployed. The frontend can be published to an existing Azure Static Web Apps Free site by manually running the `Deploy frontend to Azure Static Web Apps` GitHub Actions workflow. Configure the repository secret `AZURE_STATIC_WEB_APPS_API_TOKEN` and repository variable `VITE_API_URL` (the HTTPS API origin, without `/api/v1`). The workflow is manual-only and does not provision resources.
 
-The backend has a container definition at [backend/Dockerfile](backend/Dockerfile). It runs Alembic migrations before starting FastAPI. Point a container host at this Dockerfile and configure production `DATABASE_URL`, `JWT_SECRET`, `APP_ENV=production`, and `CORS_ORIGINS` (the deployed frontend origin); set SMTP and AI variables only if those features are used. Do not use container-local SQLite for real deployment data because its storage is not durable across container replacement or scaling.
+The API has a root-level [Dockerfile](Dockerfile) for hosts that build from the repository root, plus [backend/Dockerfile](backend/Dockerfile) for hosts configured with `backend` as the build context. Both run Alembic migrations before starting FastAPI. Configure production `DATABASE_URL`, `JWT_SECRET`, `APP_ENV=production`, and `CORS_ORIGINS` (the deployed frontend origin); set SMTP and AI variables only if those features are used. Do not use container-local SQLite or the local XAMPP database for a public deployment; use a database reachable by the host. The frontend is a separate static site and needs its own build configuration.
 
 Azure's free quotas and offers can change, and usage beyond a quota can be billed. A persistent production database and backend are not guaranteed to cost zero. Since this deployment was requested with a strict no-charges requirement, provision neither until the selected Azure services and their current pricing have been confirmed. These files alone do not mean PetVerse is live.
 

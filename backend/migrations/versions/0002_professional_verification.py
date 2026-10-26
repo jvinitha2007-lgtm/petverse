@@ -36,14 +36,30 @@ def upgrade() -> None:
             name="ck_professional_applications_status",
         ),
     )
-    op.create_index(
-        "uq_professional_applications_pending_user",
-        "professional_applications",
-        ["user_id"],
-        unique=True,
-        sqlite_where=sa.text("status = 'pending'"),
-        postgresql_where=sa.text("status = 'pending'"),
-    )
+    if op.get_bind().dialect.name == "mysql":
+        op.add_column(
+            "professional_applications",
+            sa.Column(
+                "pending_user_id",
+                sa.Integer(),
+                sa.Computed("CASE WHEN status = 'pending' THEN user_id ELSE NULL END", persisted=True),
+            ),
+        )
+        op.create_index(
+            "uq_professional_applications_pending_user",
+            "professional_applications",
+            ["pending_user_id"],
+            unique=True,
+        )
+    else:
+        op.create_index(
+            "uq_professional_applications_pending_user",
+            "professional_applications",
+            ["user_id"],
+            unique=True,
+            sqlite_where=sa.text("status = 'pending'"),
+            postgresql_where=sa.text("status = 'pending'"),
+        )
     op.create_index(
         "ix_professional_applications_status_created",
         "professional_applications",
@@ -70,6 +86,8 @@ def downgrade() -> None:
     op.drop_table("audit_logs")
     op.drop_index("ix_professional_applications_status_created", table_name="professional_applications")
     op.drop_index("uq_professional_applications_pending_user", table_name="professional_applications")
+    if op.get_bind().dialect.name == "mysql":
+        op.drop_column("professional_applications", "pending_user_id")
     op.drop_table("professional_applications")
     with op.batch_alter_table("users") as batch_op:
         batch_op.drop_column("is_suspended")
