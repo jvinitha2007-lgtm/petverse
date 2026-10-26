@@ -21,3 +21,12 @@ coverage/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local database and uploaded files
+*.db
+backend/uploads/
+
+# Frontend and generated files
+frontend/dist/
+*.tsbuildinfo
+node_modules/.tmp/
