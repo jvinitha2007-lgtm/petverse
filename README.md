@@ -71,6 +71,10 @@ Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM
 
 To enable the care assistant, set `AI_API_KEY`, `AI_API_BASE_URL` (HTTPS, OpenAI-compatible `/chat/completions` API), and `AI_MODEL` in `backend/.env`. Keep the key server-side and review your provider's data-retention policy before enabling this feature. Without a key, the assistant remains unavailable except for local emergency escalation guidance.
 
+### Enable Google sign-in
+
+Create a Google OAuth client ID for a Web application in Google Cloud Console and add the deployed website origin (for example, `https://petverse-q6pa.onrender.com`) as an authorized JavaScript origin. Set `GOOGLE_CLIENT_ID` in the backend environment (including the Render service) to that client ID. No Google client secret is needed for this ID-token flow. The API verifies Google's signed ID token and verified email before issuing a PetVerse session. New Google accounts are created as owners; a verified Google email can also link to an existing account with that email. Until the client ID is configured, the sign-in page shows Google sign-in as unavailable.
+
 Care reminders use the same SMTP settings. Apply migrations, then schedule the following command to run periodically from the `backend` directory (for example, hourly with Task Scheduler or cron):
 
 ```powershell

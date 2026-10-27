@@ -7,6 +7,7 @@ interface AuthContextValue {
   loading: boolean;
   error: string;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (credential: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<string>;
   signOut: () => void;
   clearError: () => void;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     signIn: (email, password) => authenticate(api.login({ email, password })),
+    signInWithGoogle: (credential) => authenticate(api.googleLogin(credential)),
     signUp: register,
     signOut: () => {
       saveToken(null);

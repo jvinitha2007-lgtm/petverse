@@ -14,11 +14,13 @@ def utc_now() -> datetime:
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (Index("uq_users_google_subject", "google_subject", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True)
     full_name: Mapped[str] = mapped_column(String(120))
     password_hash: Mapped[str] = mapped_column(String(255))
+    google_subject: Mapped[str | None] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(24), default="owner", nullable=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
     is_suspended: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

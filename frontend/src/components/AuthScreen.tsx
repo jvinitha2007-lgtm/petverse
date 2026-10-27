@@ -1,7 +1,26 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, Heart, ShieldCheck, Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (options: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+          }) => void;
+          renderButton: (
+            element: HTMLElement,
+            options: { theme: string; size: string; text: string; shape: string; width: number },
+          ) => void;
+        };
+      };
+    };
+  }
+}
 
 export default function AuthScreen() {
   const initialParams = new URLSearchParams(window.location.search);
@@ -15,8 +34,72 @@ export default function AuthScreen() {
   const [notice, setNotice] = useState("");
   const [localError, setLocalError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { signIn, signUp, error, clearError } = useAuth();
+  const [googleClientId, setGoogleClientId] = useState<string | null | undefined>();
+  const [googleConfigError, setGoogleConfigError] = useState("");
+  const googleButton = useRef<HTMLDivElement>(null);
+  const googleCredentialHandler = useRef<(credential: string) => void>(() => undefined);
+  const { signIn, signInWithGoogle, signUp, error, clearError } = useAuth();
   const registering = mode === "register";
+
+  useEffect(() => {
+    api.googleAuthConfig().then(({ client_id }) => {
+      setGoogleClientId(client_id);
+    }).catch((reason: unknown) => {
+      setGoogleConfigError(reason instanceof Error ? reason.message : "Google sign-in configuration is unavailable.");
+    });
+  }, []);
+
+  useEffect(() => {
+    googleCredentialHandler.current = (credential) => {
+      setSubmitting(true);
+      setLocalError("");
+      clearError();
+      signInWithGoogle(credential).catch((reason: unknown) => {
+        setLocalError(reason instanceof Error ? reason.message : "Unable to sign in with Google.");
+      }).finally(() => setSubmitting(false));
+    };
+  }, [clearError, signInWithGoogle]);
+
+  useEffect(() => {
+    if (!googleClientId || !googleButton.current || (mode !== "signin" && mode !== "register")) return;
+    let active = true;
+    const renderGoogleButton = () => {
+      if (!active || !googleButton.current || !window.google) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: ({ credential }) => googleCredentialHandler.current(credential),
+      });
+      googleButton.current.replaceChildren();
+      window.google.accounts.id.renderButton(googleButton.current, {
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        shape: "rect",
+        width: Math.min(360, googleButton.current.clientWidth || 360),
+      });
+    };
+
+    let script = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    if (window.google) {
+      renderGoogleButton();
+    } else {
+      script.addEventListener("load", renderGoogleButton);
+      script.addEventListener("error", () => {
+        if (active) setLocalError("Google sign-in could not load. Please try again later.");
+      }, { once: true });
+    }
+    return () => {
+      active = false;
+      script?.removeEventListener("load", renderGoogleButton);
+    };
+  }, [googleClientId, mode]);
 
   useEffect(() => {
     if (!verificationToken) return;
@@ -103,6 +186,22 @@ export default function AuthScreen() {
               {submitting ? "One moment…" : registering ? "Create account" : mode === "forgot" ? "Send reset link" : mode === "reset" ? "Save new password" : "Sign in"} <ArrowRight size={17} />
             </button>
           </form>
+          {(mode === "signin" || mode === "register") && <div className="google-signin">
+            <div className="google-divider"><span>or continue with</span></div>
+            {googleClientId
+              ? <div ref={googleButton} className="google-button" />
+              : <div className="google-pending">
+                <button className="google-pending-button" type="button" disabled>
+                  <span className="google-g-mark" aria-hidden="true">G</span>
+                  Continue with Google
+                </button>
+                <p role="status" className="google-unavailable">
+                  {googleConfigError || (googleClientId === null
+                    ? "Google sign-in needs to be configured by the site owner."
+                    : "Loading sign-in options…")}
+                </p>
+              </div>}
+          </div>}
           {mode === "signin" && <div className="auth-secondary-actions">
             <button onClick={() => toggleMode("forgot")}>Forgot password?</button>
             <button onClick={async () => {

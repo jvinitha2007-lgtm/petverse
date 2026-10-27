@@ -40,6 +40,9 @@ interface AuthMessageResponse {
 }
 
 export const api = {
+  googleAuthConfig: () => request<{ client_id: string | null }>("/auth/google/config"),
+  googleLogin: (credential: string) =>
+    request<AuthResponse>("/auth/google", { method: "POST", body: JSON.stringify({ credential }) }),
   register: (data: { full_name: string; email: string; password: string }) =>
     request<AuthMessageResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
   login: (data: { email: string; password: string }) =>

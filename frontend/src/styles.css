@@ -69,6 +69,15 @@ button:disabled { opacity: .65; cursor: wait; }
 .mode-toggle { color: #89958f; font-size: 12px; text-align: center; margin: 22px 0 26px; }
 .mode-toggle button { border: 0; padding: 0; color: #327863; background: none; font-weight: 700; cursor: pointer; }
 .auth-secondary-actions { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin: 17px 0 -7px; }
+.google-signin { margin: 19px 0 24px; }
+.google-divider { display: flex; align-items: center; gap: 12px; color: #97a39c; font-size: 11px; }
+.google-divider::before, .google-divider::after { content: ""; height: 1px; flex: 1; background: #edf0ec; }
+.google-button { display: flex; justify-content: center; margin-top: 15px; }
+.google-pending { margin-top: 15px; text-align: center; }
+.google-pending-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 42px; border: 1px solid #dadce0; border-radius: 4px; background: #fff; color: #3c4043; font: 500 14px Roboto, Arial, sans-serif; }
+.google-pending-button:disabled { opacity: 1; }
+.google-g-mark { color: #4285f4; font-weight: 700; font-size: 18px; }
+.google-unavailable { margin: 8px 0 0; color: #89958f; font-size: 10px; }
 .auth-secondary-actions button { border: 0; padding: 0; color: #62816e; background: none; font-size: 10px; cursor: pointer; }
 .security-note { display: flex; align-items: center; justify-content: center; gap: 7px; border-top: 1px solid #edf0ec; padding-top: 21px; color: #9aa59f; font-size: 10px; }
 .auth-footer { font-size: 10px; color: #a2aca6; display: flex; justify-content: space-between; }

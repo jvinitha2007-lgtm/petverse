@@ -4,6 +4,10 @@ import secrets
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from google.auth.exceptions import GoogleAuthError
+from google.auth.transport.requests import Request as GoogleRequest
+from google.oauth2 import id_token as google_id_token
+from requests.exceptions import RequestException
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -40,6 +44,7 @@ from app.schemas import (
     CareTaskOut,
     DashboardOut,
     EmailActionRequest,
+    GoogleLoginRequest,
     LoginRequest,
     MedicalRecordCreate,
     MedicalRecordOut,
@@ -58,6 +63,11 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/api/v1")
+
+
+@router.get("/auth/google/config")
+def google_auth_config() -> dict[str, str | None]:
+    return {"client_id": settings.google_client_id}
 
 
 def deliver_auth_link(db: Session, user: User, purpose: str) -> None:
@@ -129,6 +139,70 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenOut:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="Verify your email address before signing in")
+    return TokenOut(access_token=create_access_token(str(user.id)), user=user)
+
+
+@router.post("/auth/google", response_model=TokenOut)
+def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> TokenOut:
+    if not settings.google_client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
+    try:
+        claims = google_id_token.verify_oauth2_token(
+            payload.credential,
+            GoogleRequest(),
+            settings.google_client_id,
+        )
+    except (GoogleAuthError, RequestException, ValueError) as exc:
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in credential") from exc
+
+    subject = claims.get("sub")
+    email = claims.get("email")
+    if (
+        not isinstance(subject, str)
+        or not subject
+        or not isinstance(email, str)
+        or not email
+        or claims.get("email_verified") is not True
+    ):
+        raise HTTPException(status_code=401, detail="Google must provide a verified email address")
+
+    email = email.lower()
+    user = db.scalar(select(User).where(User.google_subject == subject))
+    if user is None:
+        user = db.scalar(select(User).where(User.email == email))
+        if user is not None and user.google_subject not in (None, subject):
+            raise HTTPException(status_code=401, detail="Unable to sign in with this Google account")
+        if user is None:
+            name = claims.get("name")
+            full_name = name.strip()[:120] if isinstance(name, str) else ""
+            if len(full_name) < 2:
+                full_name = email.partition("@")[0][:120] or "PetVerse user"
+            user = User(
+                email=email,
+                full_name=full_name,
+                password_hash=hash_password(secrets.token_urlsafe(48)),
+                google_subject=subject,
+                email_verified=True,
+            )
+            db.add(user)
+        else:
+            user.google_subject = subject
+            user.email_verified = True
+    elif user.email != email:
+        email_owner = db.scalar(select(User.id).where(User.email == email, User.id != user.id))
+        if email_owner is not None:
+            raise HTTPException(status_code=409, detail="This Google email is already used by another account")
+        user.email = email
+        user.email_verified = True
+
+    if user.is_suspended:
+        raise HTTPException(status_code=403, detail="This account is suspended")
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Unable to sign in with this Google account") from exc
     return TokenOut(access_token=create_access_token(str(user.id)), user=user)
 
 

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     access_token_minutes: int = 60
     cors_origins: str = "http://localhost:5173"
     frontend_url: str = "http://localhost:5173"
+    google_client_id: str | None = None
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_username: str | None = None
