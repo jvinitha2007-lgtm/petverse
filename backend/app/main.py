@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.emergencies import router as emergency_router
 from app.api.community import router as community_router
@@ -36,3 +38,8 @@ app.include_router(assistant_router)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+static_directory = Path(__file__).resolve().parents[1] / "static"
+if static_directory.is_dir():
+    app.mount("/", StaticFiles(directory=static_directory, html=True), name="frontend")
