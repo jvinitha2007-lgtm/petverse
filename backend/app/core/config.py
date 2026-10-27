@@ -27,7 +27,8 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        configured = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return list(dict.fromkeys([*configured, "https://jvinitha2007-lgtm.github.io"]))
 
 
 @lru_cache

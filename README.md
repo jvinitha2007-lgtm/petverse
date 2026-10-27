@@ -105,6 +105,10 @@ The API has a root-level [Dockerfile](Dockerfile) for hosts that build from the 
 
 Azure's free quotas and offers can change, and usage beyond a quota can be billed. A persistent production database and backend are not guaranteed to cost zero. Since this deployment was requested with a strict no-charges requirement, provision neither until the selected Azure services and their current pricing have been confirmed. These files alone do not mean PetVerse is live.
 
+## GitHub Pages frontend
+
+The public frontend is built and deployed to GitHub Pages by `.github/workflows/deploy-frontend-github-pages.yml` on pushes to `main` or by manual workflow dispatch. It uses the free static hosting available for this public repository and points to the Render API at `https://petverse-q6pa.onrender.com`. The backend allows the Pages origin for browser requests. The Render API and its database are separate from local XAMPP; the local demo account and pet data are not copied to Render by this workflow. Render service availability and database persistence depend on that service's plan and configuration.
+
 ## Tests and production build
 
 ```powershell
